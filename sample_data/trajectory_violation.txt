@@ -1,0 +1,9 @@
+# Sample Trajectory File - Aircraft violating corridor constraints
+# Format: latitude longitude altitude time
+51.0000 6.0000 1000.0 10:00:00
+50.9000 6.3000 1100.0 10:02:00
+50.7000 6.8000 1300.0 10:04:00
+50.5000 7.2000 1500.0 10:06:00
+50.3000 7.7000 1700.0 10:08:00
+50.1000 8.1000 1900.0 10:10:00
+

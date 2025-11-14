@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FOFIS - Flight Corridor Monitoring System</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        #container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        #map-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Playback Controls */
+        #playback-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 300px;
+        }
+        
+        #playback-controls h3 {
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .control-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+        
+        .control-row button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            background: #4CAF50;
+            color: white;
+            transition: background 0.3s;
+        }
+        
+        .control-row button:hover {
+            background: #45a049;
+        }
+        
+        .control-row button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        #time-slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+        }
+        
+        #speed-selector {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        #time-display {
+            font-size: 14px;
+            color: #666;
+            min-width: 150px;
+            text-align: center;
+        }
+        
+        /* Table Container */
+        #table-container {
+            height: 300px;
+            background: white;
+            border-top: 2px solid #e0e0e0;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        #table-container h2 {
+            margin-bottom: 15px;
+            font-size: 20px;
+            color: #333;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        table th,
+        table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        table th {
+            background: #f9f9f9;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        /* Dropzone styling */
+        .dropzone {
+            border: 2px dashed #ccc;
+            border-radius: 4px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fafafa;
+        }
+        
+        .dropzone:hover {
+            border-color: #4CAF50;
+            background: #f0f8f0;
+        }
+        
+        .dropzone.dragover {
+            border-color: #4CAF50;
+            background: #e8f5e9;
+        }
+        
+        .dropzone.uploaded {
+            border-color: #4CAF50;
+            background: #e8f5e9;
+        }
+        
+        .dropzone input[type="file"] {
+            display: none;
+        }
+        
+        .dropzone-text {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .file-name {
+            font-size: 12px;
+            color: #4CAF50;
+            font-weight: 600;
+        }
+        
+        .delete-btn {
+            padding: 8px 16px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        
+        .delete-btn:hover {
+            background: #da190b;
+        }
+        
+        .add-row-btn {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .add-row-btn:hover {
+            background: #0b7dda;
+        }
+        
+        .metric-cell {
+            font-weight: 500;
+        }
+        
+        .loading {
+            color: #ff9800;
+        }
+        
+        .error {
+            color: #f44336;
+            font-size: 12px;
+        }
+        
+        /* Aircraft marker animation */
+        .aircraft-icon {
+            width: 32px;
+            height: 32px;
+            background: #2196F3;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        /* Radio button styling */
+        .select-radio {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #4CAF50;
+            transform: scale(1);
+            transition: transform 0.2s;
+        }
+        
+        .select-radio:hover {
+            transform: scale(1.2);
+        }
+        
+        .select-cell {
+            text-align: center;
+            vertical-align: middle;
+        }
+        
+        table tr.selected {
+            background-color: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        table tbody tr:hover:not(.selected) {
+            background-color: #f5f5f5;
+        }
+        
+        /* Live Compliance Display */
+        #live-compliance {
+            margin-top: 10px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        #live-compliance-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        #live-compliance-value {
+            font-size: 28px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        #live-compliance-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        
+        #live-compliance-fill {
+            height: 100%;
+            width: 0%;
+            transition: all 0.3s;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <!-- Map Container -->
+        <div id="map-container">
+            <div id="map"></div>
+            
+            <!-- Playback Controls -->
+            <div id="playback-controls">
+                <h3>Playback Controls</h3>
+                
+                <div class="control-row">
+                    <button id="play-btn">▶ Play</button>
+                    <button id="pause-btn" disabled>⏸ Pause</button>
+                    <select id="speed-selector">
+                        <option value="1">1×</option>
+                        <option value="2">2×</option>
+                        <option value="4">4×</option>
+                        <option value="8">8×</option>
+                        <option value="16">16×</option>
+                    </select>
+                </div>
+                
+                <div class="control-row">
+                    <input type="range" id="time-slider" min="0" max="100" value="0" disabled>
+                </div>
+                
+                <div class="control-row">
+                    <div id="time-display">00:00:00 / 00:00:00</div>
+                </div>
+                
+                <!-- Live Compliance Display -->
+                <div id="live-compliance">
+                    <div id="live-compliance-label">Live Compliance</div>
+                    <div id="live-compliance-value">---%</div>
+                    <div id="live-compliance-bar">
+                        <div id="live-compliance-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Table Container -->
+        <div id="table-container">
+            <h2>Flight Cases</h2>
+            
+            <table id="flight-table">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;" title="Выберите траекторию для отображения">Select</th>
+                        <th style="width: 19%;">Corridor File</th>
+                        <th style="width: 19%;">Trajectory File</th>
+                        <th style="width: 13%;">Mean Deviation</th>
+                        <th style="width: 13%;">Mean Speed</th>
+                        <th style="width: 13%;" title="Процент соответствия коридору (рассчитано C++)">Compliance</th>
+                        <th style="width: 10%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Rows will be added dynamically -->
+                </tbody>
+            </table>
+            
+            <button class="add-row-btn" id="add-row-btn">+ Add New Flight Case</button>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // ========================================
+        // Global State
+        // ========================================
+        
+        let map;
+        let flightCases = [];
+        let currentFlightCase = null;
+        let corridorLayer = null;
+        let trajectoryLayer = null;
+        let aircraftMarker = null;
+        let isPlaying = false;
+        let playbackSpeed = 1;
+        let currentTime = 0;
+        let startTime = 0;
+        let endTime = 0;
+        let animationFrame = null;
+        let lastTimestamp = null;
+        
+        // ========================================
+        // Map Initialization
+        // ========================================
+        
+        function initMap() {
+            map = L.map('map').setView([50.0, 10.0], 6);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+        }
+        
+        // ========================================
+        // Map Rendering
+        // ========================================
+        
+        function displayCorridor(corridorData) {
+            // Remove existing corridor
+            if (corridorLayer) {
+                map.removeLayer(corridorLayer);
+            }
+            
+            if (!corridorData || corridorData.length === 0) return;
+            
+            // Create polyline from corridor points
+            const points = corridorData.map(p => [p.latitude, p.longitude]);
+            
+            corridorLayer = L.polyline(points, {
+                color: '#4CAF50',
+                weight: 3,
+                opacity: 0.7
+            }).addTo(map);
+            
+            // Add markers for corridor points with allowed deviation circles
+            corridorData.forEach(point => {
+                // Add circle showing allowed deviation
+                L.circle([point.latitude, point.longitude], {
+                    radius: point.allowed_deviation,
+                    color: '#4CAF50',
+                    fillColor: '#4CAF50',
+                    fillOpacity: 0.1,
+                    weight: 1
+                }).addTo(map);
+                
+                // Add marker with popup
+                L.circleMarker([point.latitude, point.longitude], {
+                    radius: 4,
+                    color: '#2E7D32',
+                    fillColor: '#4CAF50',
+                    fillOpacity: 1
+                }).bindPopup(`
+                    <b>Corridor Point</b><br>
+                    Allowed Deviation: ${point.allowed_deviation.toFixed(0)}m<br>
+                    Allowed Speed: ${point.allowed_speed.toFixed(0)} km/h
+                `).addTo(map);
+            });
+            
+            // Fit map to corridor bounds
+            map.fitBounds(corridorLayer.getBounds());
+        }
+        
+        function displayTrajectory(trajectoryData) {
+            // Remove existing trajectory
+            if (trajectoryLayer) {
+                map.removeLayer(trajectoryLayer);
+            }
+            
+            if (!trajectoryData || trajectoryData.length === 0) return;
+            
+            // Create polyline from trajectory points
+            const points = trajectoryData.map(p => [p.latitude, p.longitude]);
+            
+            trajectoryLayer = L.polyline(points, {
+                color: '#2196F3',
+                weight: 2,
+                opacity: 0.5,
+                dashArray: '5, 5'
+            }).addTo(map);
+        }
+        
+        function updateAircraftPosition(latitude, longitude, altitude, speed) {
+            if (!aircraftMarker) {
+                // Create aircraft marker
+                const icon = L.divIcon({
+                    className: 'aircraft-icon',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
+                
+                aircraftMarker = L.marker([latitude, longitude], { icon }).addTo(map);
+            } else {
+                // Update position
+                aircraftMarker.setLatLng([latitude, longitude]);
+            }
+            
+            // Update popup
+            aircraftMarker.bindPopup(`
+                <b>Aircraft Position</b><br>
+                Altitude: ${altitude.toFixed(0)}m<br>
+                Speed: ${speed.toFixed(1)} km/h
+            `);
+        }
+        
+        // ========================================
+        // Playback Logic
+        // ========================================
+        
+        function parseTime(timeStr) {
+            const parts = timeStr.split(':');
+            return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+        }
+        
+        function formatTime(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+        
+        function interpolatePosition(p1, p2, targetTime) {
+            const t1 = p1.time_seconds;
+            const t2 = p2.time_seconds;
+            
+            if (t2 - t1 === 0) return p1;
+            
+            const factor = Math.max(0, Math.min(1, (targetTime - t1) / (t2 - t1)));
+            
+            return {
+                latitude: p1.latitude + factor * (p2.latitude - p1.latitude),
+                longitude: p1.longitude + factor * (p2.longitude - p1.longitude),
+                altitude: p1.altitude + factor * (p2.altitude - p1.altitude),
+                speed: p1.speed + factor * (p2.speed - p1.speed)
+            };
+        }
+        
+        function updatePlayback(timestamp) {
+            if (!isPlaying || !currentFlightCase) return;
+            
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaMs = timestamp - lastTimestamp;
+            lastTimestamp = timestamp;
+            
+            // Update current time based on playback speed
+            currentTime += (deltaMs / 1000) * playbackSpeed;
+            
+            // Check if we've reached the end
+            if (currentTime >= endTime) {
+                currentTime = endTime;
+                stopPlayback();
+            }
+            
+            // Update slider
+            const slider = document.getElementById('time-slider');
+            slider.value = ((currentTime - startTime) / (endTime - startTime)) * 100;
+            
+            // Update time display
+            document.getElementById('time-display').textContent = 
+                `${formatTime(currentTime)} / ${formatTime(endTime)}`;
+            
+            // Find current position and update aircraft
+            const trajectory = currentFlightCase.trajectory_data;
+            let position = null;
+            let currentPointIndex = -1;
+            
+            for (let i = 0; i < trajectory.length - 1; i++) {
+                if (currentTime >= trajectory[i].time_seconds && 
+                    currentTime <= trajectory[i + 1].time_seconds) {
+                    position = interpolatePosition(trajectory[i], trajectory[i + 1], currentTime);
+                    currentPointIndex = i;
+                    break;
+                }
+            }
+            
+            if (position) {
+                updateAircraftPosition(
+                    position.latitude,
+                    position.longitude,
+                    position.altitude,
+                    position.speed
+                );
+            }
+            
+            // Update live compliance based on points passed so far
+            if (currentPointIndex >= 0) {
+                updateLiveCompliance(trajectory, currentPointIndex);
+            }
+            
+            // Continue animation
+            if (isPlaying) {
+                animationFrame = requestAnimationFrame(updatePlayback);
+            }
+        }
+        
+        function updateLiveCompliance(trajectory, currentIndex) {
+            // Count compliant points up to current position
+            let compliantCount = 0;
+            let totalCount = currentIndex + 1; // +1 because index is 0-based
+            
+            for (let i = 0; i <= currentIndex; i++) {
+                const point = trajectory[i];
+                
+                // Check if point is compliant (either from C++ or Python calculation)
+                const isCompliant = point.cpp_compliant || 
+                    (point.deviation !== undefined && 
+                     point.allowed_deviation !== undefined && 
+                     point.deviation <= point.allowed_deviation &&
+                     point.speed <= point.allowed_speed);
+                
+                if (isCompliant) {
+                    compliantCount++;
+                }
+            }
+            
+            // Calculate percentage
+            const percentage = totalCount > 0 ? (compliantCount / totalCount) * 100 : 0;
+            
+            // Update display
+            const valueElement = document.getElementById('live-compliance-value');
+            const fillElement = document.getElementById('live-compliance-fill');
+            
+            valueElement.textContent = `${percentage.toFixed(1)}%`;
+            fillElement.style.width = `${percentage}%`;
+            
+            // Color coding based on percentage
+            if (percentage >= 90) {
+                valueElement.style.color = '#4CAF50'; // Green
+                fillElement.style.backgroundColor = '#4CAF50';
+                document.getElementById('live-compliance').style.borderLeftColor = '#4CAF50';
+            } else if (percentage >= 70) {
+                valueElement.style.color = '#FF9800'; // Orange
+                fillElement.style.backgroundColor = '#FF9800';
+                document.getElementById('live-compliance').style.borderLeftColor = '#FF9800';
+            } else {
+                valueElement.style.color = '#F44336'; // Red
+                fillElement.style.backgroundColor = '#F44336';
+                document.getElementById('live-compliance').style.borderLeftColor = '#F44336';
+            }
+        }
+        
+        function startPlayback() {
+            console.log('startPlayback called');
+            console.log('currentFlightCase:', currentFlightCase);
+            
+            if (!currentFlightCase) {
+                console.error('No flight case selected');
+                alert('Пожалуйста, выберите траекторию!\n\nНажмите на галочку (◯) в колонке "Select" напротив нужной строки в таблице.');
+                return;
+            }
+            
+            if (!currentFlightCase.trajectory_data) {
+                console.error('No trajectory_data in currentFlightCase:', currentFlightCase);
+                alert('Данные траектории отсутствуют или не загружены.\n\nПопробуйте выбрать траекторию заново.');
+                return;
+            }
+            
+            if (!Array.isArray(currentFlightCase.trajectory_data) || currentFlightCase.trajectory_data.length === 0) {
+                console.error('Invalid trajectory_data:', currentFlightCase.trajectory_data);
+                alert('Траектория пуста или повреждена.');
+                return;
+            }
+            
+            console.log('Starting playback with', currentFlightCase.trajectory_data.length, 'trajectory points');
+            
+            isPlaying = true;
+            lastTimestamp = null;
+            
+            document.getElementById('play-btn').disabled = true;
+            document.getElementById('pause-btn').disabled = false;
+            document.getElementById('time-slider').disabled = false;
+            
+            animationFrame = requestAnimationFrame(updatePlayback);
+        }
+        
+        function pausePlayback() {
+            isPlaying = false;
+            lastTimestamp = null;
+            
+            document.getElementById('play-btn').disabled = false;
+            document.getElementById('pause-btn').disabled = true;
+            
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+                animationFrame = null;
+            }
+        }
+        
+        function stopPlayback() {
+            pausePlayback();
+            currentTime = startTime;
+            
+            const slider = document.getElementById('time-slider');
+            slider.value = 0;
+            
+            document.getElementById('time-display').textContent = 
+                `${formatTime(startTime)} / ${formatTime(endTime)}`;
+            
+            // Reset live compliance
+            resetLiveCompliance();
+        }
+        
+        function resetLiveCompliance() {
+            document.getElementById('live-compliance-value').textContent = '0.0%';
+            document.getElementById('live-compliance-fill').style.width = '0%';
+            document.getElementById('live-compliance-fill').style.backgroundColor = '#2196F3';
+            document.getElementById('live-compliance').style.borderLeftColor = '#2196F3';
+            document.getElementById('live-compliance-value').style.color = '#333';
+        }
+        
+        function setPlaybackTime(percentage) {
+            currentTime = startTime + (endTime - startTime) * (percentage / 100);
+            
+            // Update display
+            document.getElementById('time-display').textContent = 
+                `${formatTime(currentTime)} / ${formatTime(endTime)}`;
+            
+            // Update aircraft position and live compliance
+            if (currentFlightCase && currentFlightCase.trajectory_data) {
+                const trajectory = currentFlightCase.trajectory_data;
+                
+                for (let i = 0; i < trajectory.length - 1; i++) {
+                    if (currentTime >= trajectory[i].time_seconds && 
+                        currentTime <= trajectory[i + 1].time_seconds) {
+                        const position = interpolatePosition(
+                            trajectory[i],
+                            trajectory[i + 1],
+                            currentTime
+                        );
+                        updateAircraftPosition(
+                            position.latitude,
+                            position.longitude,
+                            position.altitude,
+                            position.speed
+                        );
+                        // Update compliance for this position
+                        updateLiveCompliance(trajectory, i);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // ========================================
+        // API Calls
+        // ========================================
+        
+        async function loadFlightCases() {
+            try {
+                const response = await fetch('/api/flight-cases/');
+                flightCases = await response.json();
+                renderTable();
+            } catch (error) {
+                console.error('Error loading flight cases:', error);
+            }
+        }
+        
+        async function uploadFiles(corridorFile, trajectoryFile) {
+            const formData = new FormData();
+            formData.append('corridor_file', corridorFile);
+            formData.append('trajectory_file', trajectoryFile);
+            
+            try {
+                const response = await fetch('/api/flight-cases/', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return data;
+                } else {
+                    throw new Error('Upload failed');
+                }
+            } catch (error) {
+                console.error('Error uploading files:', error);
+                throw error;
+            }
+        }
+        
+        async function deleteFlightCase(id) {
+            try {
+                const response = await fetch(`/api/flight-cases/${id}/`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    await loadFlightCases();
+                } else {
+                    throw new Error('Delete failed');
+                }
+            } catch (error) {
+                console.error('Error deleting flight case:', error);
+            }
+        }
+        
+        async function loadFlightCaseData(id) {
+            try {
+                console.log('Loading flight case data for ID:', id);
+                const response = await fetch(`/api/flight-cases/${id}/trajectory_data/`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Flight case data loaded:', data);
+                
+                // Validate data
+                if (!data.corridor || !data.trajectory) {
+                    throw new Error('Invalid data: missing corridor or trajectory');
+                }
+                
+                if (!Array.isArray(data.trajectory) || data.trajectory.length === 0) {
+                    throw new Error('Invalid trajectory data');
+                }
+                
+                // Store in global variable with proper naming
+                currentFlightCase = {
+                    corridor: data.corridor,
+                    trajectory: data.trajectory,
+                    trajectory_data: data.trajectory,  // Keep both names for compatibility
+                    corridor_data: data.corridor,
+                    start_time: data.start_time,
+                    end_time: data.end_time,
+                    mean_speed: data.mean_speed,
+                    mean_deviation: data.mean_deviation
+                };
+                
+                // Display corridor and trajectory
+                displayCorridor(data.corridor);
+                displayTrajectory(data.trajectory);
+                
+                // Set up playback times
+                startTime = data.trajectory[0].time_seconds;
+                endTime = data.trajectory[data.trajectory.length - 1].time_seconds;
+                currentTime = startTime;
+                
+                // Reset playback controls
+                stopPlayback();
+                document.getElementById('play-btn').disabled = false;
+                
+                console.log('Flight case loaded successfully. Play button enabled.');
+                
+                return true;
+                
+            } catch (error) {
+                console.error('Error loading flight case data:', error);
+                alert(`Ошибка загрузки данных: ${error.message}`);
+                currentFlightCase = null;
+                document.getElementById('play-btn').disabled = true;
+                return false;
+            }
+        }
+        
+        // ========================================
+        // Table Management
+        // ========================================
+        
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            
+            flightCases.forEach(fc => {
+                const row = createTableRow(fc);
+                tbody.appendChild(row);
+            });
+            
+            // Add new empty row
+            const emptyRow = createEmptyRow();
+            tbody.appendChild(emptyRow);
+        }
+        
+        function createTableRow(flightCase) {
+            const row = document.createElement('tr');
+            row.dataset.flightCaseId = flightCase.id;
+            
+            // Select radio button cell
+            const selectCell = document.createElement('td');
+            selectCell.className = 'select-cell';
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'flight-case-select';
+            radio.className = 'select-radio';
+            radio.value = flightCase.id;
+            radio.onclick = async () => {
+                // Remove selected class from all rows
+                document.querySelectorAll('#table-body tr').forEach(r => {
+                    r.classList.remove('selected');
+                });
+                // Add selected class to current row
+                row.classList.add('selected');
+                // Load flight case data and wait for completion
+                const success = await loadFlightCaseData(flightCase.id);
+                if (success) {
+                    console.log('Flight case successfully loaded, ready for playback');
+                } else {
+                    console.error('Failed to load flight case');
+                    // Uncheck the radio if loading failed
+                    radio.checked = false;
+                    row.classList.remove('selected');
+                }
+            };
+            selectCell.appendChild(radio);
+            row.appendChild(selectCell);
+            
+            const corridorCell = document.createElement('td');
+            corridorCell.innerHTML = '<span class="file-name">✓ Uploaded</span>';
+            row.appendChild(corridorCell);
+            
+            const trajectoryCell = document.createElement('td');
+            trajectoryCell.innerHTML = '<span class="file-name">✓ Uploaded</span>';
+            row.appendChild(trajectoryCell);
+            
+            const deviationCell = document.createElement('td');
+            deviationCell.className = 'metric-cell';
+            if (flightCase.is_processed && flightCase.mean_deviation !== null) {
+                deviationCell.textContent = `${flightCase.mean_deviation.toFixed(2)} m`;
+            } else if (flightCase.processing_error) {
+                deviationCell.innerHTML = '<span class="error">Error</span>';
+            } else {
+                deviationCell.innerHTML = '<span class="loading">Processing...</span>';
+            }
+            row.appendChild(deviationCell);
+            
+            const speedCell = document.createElement('td');
+            speedCell.className = 'metric-cell';
+            if (flightCase.is_processed && flightCase.mean_speed !== null) {
+                speedCell.textContent = `${flightCase.mean_speed.toFixed(2)} km/h`;
+            } else if (flightCase.processing_error) {
+                speedCell.innerHTML = '<span class="error">Error</span>';
+            } else {
+                speedCell.innerHTML = '<span class="loading">Processing...</span>';
+            }
+            row.appendChild(speedCell);
+            
+            const complianceCell = document.createElement('td');
+            complianceCell.className = 'metric-cell';
+            if (flightCase.is_processed && flightCase.compliance_percentage !== null && flightCase.compliance_percentage !== undefined) {
+                const percentage = flightCase.compliance_percentage.toFixed(1);
+                complianceCell.textContent = `${percentage}%`;
+                // Color code based on percentage
+                if (percentage >= 90) {
+                    complianceCell.style.color = '#4CAF50'; // Green
+                    complianceCell.style.fontWeight = 'bold';
+                } else if (percentage >= 70) {
+                    complianceCell.style.color = '#FF9800'; // Orange
+                } else {
+                    complianceCell.style.color = '#F44336'; // Red
+                    complianceCell.style.fontWeight = 'bold';
+                }
+            } else if (flightCase.processing_error) {
+                complianceCell.innerHTML = '<span class="error">Error</span>';
+            } else {
+                complianceCell.innerHTML = '<span class="loading">Processing...</span>';
+            }
+            row.appendChild(complianceCell);
+            
+            const actionsCell = document.createElement('td');
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (confirm('Delete this flight case?')) {
+                    deleteFlightCase(flightCase.id);
+                }
+            };
+            actionsCell.appendChild(deleteBtn);
+            row.appendChild(actionsCell);
+            
+            return row;
+        }
+        
+        function createEmptyRow() {
+            const row = document.createElement('tr');
+            
+            // Empty select cell
+            const selectCell = document.createElement('td');
+            selectCell.className = 'select-cell';
+            selectCell.textContent = '-';
+            row.appendChild(selectCell);
+            
+            const corridorCell = document.createElement('td');
+            corridorCell.appendChild(createDropzone('corridor'));
+            row.appendChild(corridorCell);
+            
+            const trajectoryCell = document.createElement('td');
+            trajectoryCell.appendChild(createDropzone('trajectory'));
+            row.appendChild(trajectoryCell);
+            
+            const deviationCell = document.createElement('td');
+            deviationCell.textContent = '-';
+            row.appendChild(deviationCell);
+            
+            const speedCell = document.createElement('td');
+            speedCell.textContent = '-';
+            row.appendChild(speedCell);
+            
+            const complianceCell = document.createElement('td');
+            complianceCell.textContent = '-';
+            row.appendChild(complianceCell);
+            
+            const actionsCell = document.createElement('td');
+            actionsCell.textContent = '-';
+            row.appendChild(actionsCell);
+            
+            return row;
+        }
+        
+        function createDropzone(type) {
+            const dropzone = document.createElement('div');
+            dropzone.className = 'dropzone';
+            dropzone.innerHTML = `
+                <span class="dropzone-text">
+                    Drop ${type} file or click to upload
+                </span>
+            `;
+            
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt';
+            dropzone.appendChild(input);
+            
+            dropzone.onclick = () => input.click();
+            
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    dropzone.classList.add('uploaded');
+                    dropzone.querySelector('.dropzone-text').textContent = file.name;
+                    dropzone.dataset[type + 'File'] = 'true';
+                    
+                    // Check if both files are uploaded
+                    checkAndUpload(dropzone.closest('tr'));
+                }
+            };
+            
+            // Drag and drop
+            dropzone.ondragover = (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            };
+            
+            dropzone.ondragleave = () => {
+                dropzone.classList.remove('dragover');
+            };
+            
+            dropzone.ondrop = (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+                
+                const file = e.dataTransfer.files[0];
+                if (file) {
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    input.files = dataTransfer.files;
+                    input.dispatchEvent(new Event('change'));
+                }
+            };
+            
+            return dropzone;
+        }
+        
+        async function checkAndUpload(row) {
+            const cells = row.querySelectorAll('td');
+            // Note: cells[0]=select, [1]=corridor, [2]=trajectory, [3]=deviation, [4]=speed, [5]=compliance, [6]=actions
+            const corridorDropzone = cells[1].querySelector('.dropzone');
+            const trajectoryDropzone = cells[2].querySelector('.dropzone');
+            
+            if (corridorDropzone.dataset.corridorFile && 
+                trajectoryDropzone.dataset.trajectoryFile) {
+                
+                const corridorFile = corridorDropzone.querySelector('input').files[0];
+                const trajectoryFile = trajectoryDropzone.querySelector('input').files[0];
+                
+                // Show loading (cells[3], [4], [5] are deviation, speed, compliance)
+                cells[3].innerHTML = '<span class="loading">Processing...</span>';
+                cells[4].innerHTML = '<span class="loading">Processing...</span>';
+                cells[5].innerHTML = '<span class="loading">Processing...</span>';
+                
+                try {
+                    const result = await uploadFiles(corridorFile, trajectoryFile);
+                    
+                    // Display corridor immediately
+                    if (result.corridor_data) {
+                        displayCorridor(result.corridor_data);
+                    }
+                    
+                    // Reload table
+                    await loadFlightCases();
+                    
+                    // Auto-load and auto-select the new flight case
+                    if (result.id) {
+                        await loadFlightCaseData(result.id);
+                        
+                        // Auto-select the radio button for the newly uploaded case
+                        setTimeout(() => {
+                            const radio = document.querySelector(`input[type="radio"][value="${result.id}"]`);
+                            if (radio) {
+                                radio.checked = true;
+                                // Highlight the row
+                                const selectedRow = radio.closest('tr');
+                                document.querySelectorAll('#table-body tr').forEach(r => {
+                                    r.classList.remove('selected');
+                                });
+                                selectedRow.classList.add('selected');
+                            }
+                        }, 100);
+                    }
+                    
+                } catch (error) {
+                    cells[3].innerHTML = '<span class="error">Upload failed</span>';
+                    cells[4].innerHTML = '<span class="error">Upload failed</span>';
+                    cells[5].innerHTML = '<span class="error">Upload failed</span>';
+                }
+            }
+        }
+        
+        // ========================================
+        // Event Listeners
+        // ========================================
+        
+        document.getElementById('play-btn').onclick = startPlayback;
+        document.getElementById('pause-btn').onclick = pausePlayback;
+        
+        document.getElementById('speed-selector').onchange = (e) => {
+            playbackSpeed = parseFloat(e.target.value);
+        };
+        
+        document.getElementById('time-slider').oninput = (e) => {
+            setPlaybackTime(parseFloat(e.target.value));
+        };
+        
+        document.getElementById('add-row-btn').onclick = () => {
+            renderTable();
+        };
+        
+        // ========================================
+        // Initialization
+        // ========================================
+        
+        window.onload = async () => {
+            initMap();
+            await loadFlightCases();
+        };
+    </script>
+</body>
+</html>
+

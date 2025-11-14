@@ -1,0 +1,15 @@
+# Django and REST Framework
+Django==4.2.7
+djangorestframework==3.14.0
+django-cors-headers==4.3.0
+
+# Required for file handling
+Pillow==10.1.0
+
+# Optional: For better development experience
+python-decouple==3.8
+
+# Testing (optional)
+pytest==7.4.3
+pytest-django==4.7.0
+

@@ -1,0 +1,12 @@
+# Sample Corridor File
+# Format: longitude latitude altitude allowed_deviation allowed_speed
+# This represents a flight corridor from approximately Frankfurt to Munich
+8.6821 50.1109 1000.0 500.0 300.0
+9.0000 49.8000 1200.0 500.0 320.0
+9.5000 49.5000 1400.0 500.0 340.0
+10.0000 49.2000 1600.0 500.0 360.0
+10.5000 49.0000 1800.0 500.0 380.0
+11.0000 48.7000 2000.0 500.0 400.0
+11.5000 48.4000 2200.0 500.0 420.0
+11.5762 48.1351 2400.0 500.0 440.0
+
