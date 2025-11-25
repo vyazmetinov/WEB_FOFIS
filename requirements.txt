@@ -4,7 +4,7 @@ djangorestframework==3.14.0
 django-cors-headers==4.3.0
 
 # Required for file handling
-Pillow==10.1.0
+Pillow==10.4.0
 
 # Optional: For better development experience
 python-decouple==3.8

@@ -5,7 +5,7 @@ services:
     env: python
     region: frankfurt
     plan: free
-    buildCommand: bash build_render.sh
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && bash build_render.sh
     startCommand: gunicorn fofis_project.wsgi:application --bind 0.0.0.0:$PORT
     healthCheckPath: /
     envVars:
