@@ -1,6 +1,7 @@
 """
 API views for the monitoring application.
 """
+import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -13,6 +14,8 @@ from .serializers import (
     FlightCaseListSerializer,
 )
 from .processing import process_flight_case
+
+logger = logging.getLogger(__name__)
 
 
 class FlightCaseViewSet(viewsets.ModelViewSet):
@@ -41,22 +44,41 @@ class FlightCaseViewSet(viewsets.ModelViewSet):
         Create a new FlightCase by uploading corridor and trajectory files.
         Automatically triggers processing after creation.
         """
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        # Save the flight case
-        flight_case = serializer.save()
-        
-        # Automatically process the files
-        success = process_flight_case(flight_case)
-        
-        # Return full details
-        response_serializer = FlightCaseSerializer(flight_case)
-        
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_201_CREATED
-        )
+        try:
+            logger.info(f"Received file upload request. Files: {request.FILES.keys()}")
+            logger.info(f"Request data keys: {request.data.keys()}")
+            
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            # Save the flight case
+            logger.info("Saving flight case...")
+            flight_case = serializer.save()
+            logger.info(f"Flight case saved with ID: {flight_case.id}")
+            logger.info(f"Corridor file: {flight_case.corridor_file.name}")
+            logger.info(f"Trajectory file: {flight_case.trajectory_file.name}")
+            
+            # Automatically process the files
+            logger.info("Starting file processing...")
+            success = process_flight_case(flight_case)
+            logger.info(f"Processing result: {success}")
+            
+            # Return full details
+            response_serializer = FlightCaseSerializer(flight_case)
+            
+            return Response(
+                response_serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            logger.error(f"Error creating flight case: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    'error': 'Failed to upload files',
+                    'detail': str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     @action(detail=True, methods=['post'])
     def process(self, request, pk=None):

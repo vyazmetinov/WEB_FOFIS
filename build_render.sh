@@ -3,6 +3,12 @@
 
 set -o errexit  # Exit on error
 
+echo "📁 Creating media directories..."
+mkdir -p /opt/render/project/src/media/corridors
+mkdir -p /opt/render/project/src/media/trajectories
+chmod -R 755 /opt/render/project/src/media
+echo "✓ Media directories created"
+
 echo "🔧 Building C++ trajectory validator..."
 cd cpp
 make clean
