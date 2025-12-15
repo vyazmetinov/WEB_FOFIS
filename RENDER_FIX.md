@@ -97,3 +97,4 @@ pip install --upgrade Pillow
 
 ## Статус: ✅ Готово к деплою!
 
+
